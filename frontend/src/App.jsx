@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -14,6 +14,20 @@ import EditCustomer from './pages/EditCustomer';
 import CustomerProfile from './pages/CustomerProfile';
 import CustomerPublicView from './pages/CustomerPublicView';
 import Spinner from './components/ui/Spinner';
+import { useEffect } from 'react';
+
+// Listens for 'unauthorized' events emitted by axios interceptor
+function AuthListener() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      navigate('/login', { replace: true });
+    };
+    window.addEventListener('unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('unauthorized', handleUnauthorized);
+  }, [navigate]);
+  return null;
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -200,6 +214,7 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <ErrorBoundary>
+            <AuthListener />
             <AppRoutes />
           </ErrorBoundary>
           <Toaster

@@ -15,15 +15,13 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — redirect on 401
+// Response interceptor — emit event on 401
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Only redirect if not already on login page
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      // Emit a custom event instead of hard redirecting
+      window.dispatchEvent(new Event('unauthorized'));
     }
     return Promise.reject(error);
   }
