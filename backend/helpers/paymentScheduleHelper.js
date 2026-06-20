@@ -61,9 +61,24 @@ const generatePaymentSchedule = (loan, actualPayments) => {
     });
 
     if (!hasPaymentThisMonth) {
-      // It's a virtual pending/overdue payment
       const expectedInterest = parseFloat(((runningPrincipal * loan.interestRate) / 100).toFixed(2));
-      const isOverdue = now > currentDate;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const cDate = new Date(currentDate);
+      cDate.setHours(0, 0, 0, 0);
+
+      let status;
+      let daysOverdue = 0;
+
+      if (cDate > today) {
+        status = PAYMENT_STATUS.UPCOMING;
+      } else if (cDate.getTime() === today.getTime()) {
+        status = PAYMENT_STATUS.DUE_TODAY;
+      } else {
+        status = PAYMENT_STATUS.PENDING;
+        daysOverdue = Math.floor((today - cDate) / (1000 * 60 * 60 * 24));
+      }
       
       schedule.push({
         _id: `virtual_${currentDueYear}_${currentDueMonth}`,
@@ -73,9 +88,9 @@ const generatePaymentSchedule = (loan, actualPayments) => {
         totalAmount: expectedInterest,
         remainingPrincipalAfter: runningPrincipal,
         remainingPrincipal: runningPrincipal,
-        status: isOverdue ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.UPCOMING,
+        status: status,
         isVirtual: true,
-        daysOverdue: isOverdue ? Math.floor((now - currentDate) / (1000 * 60 * 60 * 24)) : 0
+        daysOverdue: daysOverdue
       });
     }
 

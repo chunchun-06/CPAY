@@ -55,7 +55,7 @@ const getCustomerByToken = asyncHandler(async (req, res) => {
   const response = {
     customer: {
       fullName: customer.fullName,
-      mobileNumber: customer.mobileNumber.replace(/(\d{6})(\d{4})/, '******$2'), // Mask middle digits
+      mobileNumber: customer.mobileNumber,
       address: customer.address || '',
     },
     loan: {

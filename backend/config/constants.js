@@ -9,6 +9,7 @@ const PAYMENT_STATUS = Object.freeze({
   PAID: 'paid',
   PENDING: 'pending',
   UPCOMING: 'upcoming',
+  DUE_TODAY: 'due_today',
 });
 
 const AUDIT_ACTIONS = Object.freeze({

@@ -37,11 +37,13 @@ export function getStatusColor(status) {
   switch (status?.toLowerCase()) {
     case 'paid':
       return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    case 'due_today':
+      return 'bg-orange-50 text-orange-600 border-orange-200';
     case 'pending':
     case 'overdue':
       return 'bg-rose-50 text-rose-600 border-rose-200';
     case 'upcoming':
-      return 'bg-amber-50 text-amber-600 border-amber-200';
+      return 'bg-blue-50 text-blue-600 border-blue-200';
     case 'active':
       return 'bg-blue-50 text-blue-600 border-blue-200';
     case 'closed':
@@ -55,13 +57,15 @@ export function getStatusColor(status) {
 export function getStatusLabel(status) {
   switch (status?.toLowerCase()) {
     case 'paid':
-      return i18n.t('status.paid');
+      return i18n.t('status.paid', 'Paid');
+    case 'due_today':
+      return i18n.t('status.dueToday', 'Due Today');
     case 'pending':
-      return i18n.t('status.pending');
+      return i18n.t('status.pending', 'Pending');
     case 'upcoming':
-      return i18n.t('status.upcoming');
+      return i18n.t('status.upcoming', 'Upcoming');
     case 'active':
-      return i18n.t('status.active');
+      return i18n.t('status.active', 'Active');
     case 'closed':
       return i18n.t('status.closed');
     default:

@@ -46,7 +46,7 @@ export default function RecentPayments({ payments = [], loading = false }) {
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <span className="text-sm font-bold text-emerald-600">
-              {formatCurrency(p.totalPaid || p.amount || 0)}
+              {formatCurrency(p.totalAmount || 0)}
             </span>
             <Badge status={p.status || 'paid'} />
           </div>

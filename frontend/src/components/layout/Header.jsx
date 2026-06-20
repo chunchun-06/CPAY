@@ -65,7 +65,7 @@ export default function Header({ pageTitle = 'Dashboard', onMenuClick }) {
                 {(admin.name || admin.email || 'A')[0].toUpperCase()}
               </span>
             </div>
-            <span className="text-sm text-blue-700 font-bold">Admin</span>
+            <span className="text-sm text-blue-700 font-bold">{t('auth.loggedInAs')}: {admin.email}</span>
           </div>
         )}
       </div>

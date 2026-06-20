@@ -109,12 +109,12 @@ export default function CustomerProfile() {
     setActionLoading(true);
     try {
       await updatePayment(selectedPayment._id || selectedPayment.id, paymentData);
-      toast.success('Payment updated successfully');
+      toast.success(t('payment.updatedSuccess'));
       setEditPaymentModal(false);
       setSelectedPayment(null);
       await Promise.all([load(), loadPayments()]);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
+      toast.error(err.response?.data?.message || t('payment.updateFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -124,12 +124,12 @@ export default function CustomerProfile() {
     setActionLoading(true);
     try {
       await deletePayment(selectedPayment._id || selectedPayment.id);
-      toast.success('Payment deleted successfully');
+      toast.success(t('payment.deletedSuccess'));
       setDeletePaymentDialog(false);
       setSelectedPayment(null);
       await Promise.all([load(), loadPayments()]);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Delete failed');
+      toast.error(err.response?.data?.message || t('payment.deleteFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -273,8 +273,7 @@ export default function CustomerProfile() {
   const pendingItems = payments.filter(p => p.isVirtual && p.status !== 'paid');
   const totalInterestPending = pendingItems.reduce((acc, p) => acc + p.interestPaid, 0);
   const lastPaymentDate = actualPayments.length > 0 ? actualPayments[0].date : null;
-  const isOverdue = pendingItems.some(p => p.daysOverdue > 0);
-  const currentStatus = isOverdue ? 'Overdue' : pendingItems.length > 0 ? 'Pending' : 'Paid';
+  const currentStatus = customer?.paymentStatus?.status || 'closed';
 
   return (
     <Layout pageTitle={customer?.fullName || t('customer.customerProfile')}>
@@ -336,46 +335,48 @@ export default function CustomerProfile() {
 
         {/* Financial Summary */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Financial Summary</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">{t('financialSummary.title')}</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Total Interest Paid</p>
+              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">{t('financialSummary.totalInterestPaid')}</p>
               <p className="text-xl font-black text-emerald-700">{formatCurrency(loan?.totalInterestPaid || 0)}</p>
             </div>
             <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider mb-1">Total Interest Pending</p>
+              <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider mb-1">{t('financialSummary.totalInterestPending')}</p>
               <p className="text-xl font-black text-rose-700">{formatCurrency(totalInterestPending)}</p>
             </div>
             <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">Total Principal Paid</p>
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">{t('financialSummary.totalPrincipalPaid')}</p>
               <p className="text-xl font-black text-blue-700">{formatCurrency(loan?.totalPrincipalPaid || 0)}</p>
             </div>
             <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">Remaining Principal</p>
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">{t('financialSummary.remainingPrincipal')}</p>
               <p className="text-xl font-black text-amber-700">{formatCurrency(loan?.remainingPrincipal || 0)}</p>
             </div>
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Monthly Interest</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('financialSummary.monthlyInterest')}</p>
               <p className="text-xl font-black text-slate-800">{formatCurrency(loan?.monthlyInterest || 0)}</p>
             </div>
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Collected</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('financialSummary.totalCollected')}</p>
               <p className="text-xl font-black text-slate-800">{formatCurrency((loan?.totalInterestPaid || 0) + (loan?.totalPrincipalPaid || 0))}</p>
             </div>
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Last Payment Date</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('financialSummary.lastPaymentDate')}</p>
               <p className="text-base font-bold text-slate-800">{lastPaymentDate ? formatDate(lastPaymentDate) : '—'}</p>
             </div>
             <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Next Due Date</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">{t('financialSummary.nextDueDate')}</p>
               <p className="text-base font-bold text-slate-800">{t('customer.ofEachMonth', { ordinal: getOrdinal(loan?.monthlyDueDay || 1), day: loan?.monthlyDueDay || 1 })}</p>
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
-            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Current Status:</span>
-            {currentStatus === 'Paid' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Paid</span>}
-            {currentStatus === 'Pending' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-100 text-amber-700"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Pending</span>}
-            {currentStatus === 'Overdue' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-rose-100 text-rose-700"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Overdue</span>}
+            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">{t('financialSummary.currentStatus')}:</span>
+            {currentStatus === 'paid' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> {t('status.paid')}</span>}
+            {currentStatus === 'due_today' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-orange-100 text-orange-700"><span className="w-2.5 h-2.5 rounded-full bg-orange-500"></span> {t('status.dueToday')}</span>}
+            {currentStatus === 'upcoming' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-blue-100 text-blue-700"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> {t('status.upcoming')}</span>}
+            {currentStatus === 'pending' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-rose-100 text-rose-700"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> {t('status.pending')}</span>}
+            {currentStatus === 'closed' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-slate-100 text-slate-700"><span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span> {t('status.closed')}</span>}
           </div>
         </div>
 
@@ -428,7 +429,7 @@ export default function CustomerProfile() {
                     </Button>
                     <a href={publicLink} target="_blank" rel="noopener noreferrer" className="block w-full">
                       <Button variant="outline" size="sm" className="w-full text-blue-600 border-blue-200 hover:bg-blue-50">
-                        Open Portal
+                        {t('common.openPortal')}
                       </Button>
                     </a>
                     <Button variant="outline" size="sm" onClick={whatsappShare} className="w-full text-green-600 border-green-200 hover:bg-green-50">
@@ -476,7 +477,7 @@ export default function CustomerProfile() {
       </Modal>
 
       {/* Edit Payment Modal */}
-      <Modal isOpen={editPaymentModal} onClose={() => { setEditPaymentModal(false); setSelectedPayment(null); }} title="Edit Payment" size="md">
+      <Modal isOpen={editPaymentModal} onClose={() => { setEditPaymentModal(false); setSelectedPayment(null); }} title={t('payment.editPayment')} size="md">
         {selectedPayment && (
           <PaymentForm 
             loan={loan} 
@@ -492,9 +493,9 @@ export default function CustomerProfile() {
         isOpen={deletePaymentDialog}
         onClose={() => setDeletePaymentDialog(false)}
         onConfirm={handleDeletePayment}
-        title="Delete Payment"
-        message="Are you sure you want to delete this payment? All dependent loan balances will be recalculated."
-        confirmText="Delete Payment"
+        title={t('payment.deletePayment')}
+        message={t('payment.deletePaymentConfirm')}
+        confirmText={t('payment.deletePayment')}
         danger
         loading={actionLoading}
       />

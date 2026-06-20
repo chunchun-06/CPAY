@@ -96,15 +96,15 @@ export default function Dashboard() {
   };
 
   const statList = [
-    { label: 'Total Customers', value: stats?.totalCustomers ?? '—', icon: statIcons.customers, color: 'blue' },
-    { label: 'Outstanding Principal', value: formatCurrency(stats?.outstandingPrincipal ?? 0), icon: statIcons.principal, color: 'amber' },
-    { label: 'Total Revenue Earned', value: formatCurrency(stats?.totalRevenueEarned ?? 0), icon: statIcons.revenue, color: 'emerald' },
-    { label: 'Total Collected This Month', value: formatCurrency(stats?.totalCollectedThisMonth ?? 0), icon: statIcons.collection, color: 'blue' },
-    { label: 'Total Interest Pending', value: formatCurrency(stats?.pendingInterest ?? 0), icon: statIcons.pending, color: 'rose' },
-    { label: 'Customers Paid This Month', value: `${stats?.customersPaidThisMonth ?? 0} / ${stats?.activeCustomers ?? 0}`, icon: statIcons.collection, color: 'emerald' },
-    { label: 'Customers Pending This Month', value: stats?.customersPendingThisMonth ?? '—', icon: statIcons.pending, color: 'rose' },
-    { label: 'Overdue Customers', value: stats?.overdueCustomers ?? '—', icon: statIcons.overdue, color: 'rose' },
-    { label: "Today's Due Customers", value: stats?.todaysDueCustomers ?? '—', icon: statIcons.today, color: 'amber' },
+    { label: t('dashboardStats.totalCustomers'), value: stats?.totalCustomers ?? '—', icon: statIcons.customers, color: 'blue' },
+    { label: t('dashboardStats.outstandingPrincipal'), value: formatCurrency(stats?.outstandingPrincipal ?? 0), icon: statIcons.principal, color: 'amber' },
+    { label: t('dashboardStats.totalRevenueEarned'), value: formatCurrency(stats?.totalRevenueEarned ?? 0), icon: statIcons.revenue, color: 'emerald' },
+    { label: t('dashboardStats.totalCollectedThisMonth'), value: formatCurrency(stats?.totalCollectedThisMonth ?? 0), icon: statIcons.collection, color: 'blue' },
+    { label: t('dashboardStats.totalInterestPending'), value: formatCurrency(stats?.pendingInterest ?? 0), icon: statIcons.pending, color: 'rose' },
+    { label: t('dashboardStats.customersPaidThisMonth'), value: `${stats?.customersPaidThisMonth ?? 0} / ${stats?.activeCustomers ?? 0}`, icon: statIcons.collection, color: 'emerald' },
+    { label: t('dashboardStats.customersPendingThisMonth'), value: stats?.customersPendingThisMonth ?? '—', icon: statIcons.pending, color: 'rose' },
+    { label: t('dashboardStats.overdueCustomers'), value: stats?.overdueCustomers ?? '—', icon: statIcons.overdue, color: 'rose' },
+    { label: t('dashboardStats.todaysDueCustomers'), value: stats?.todaysDueCustomers ?? '—', icon: statIcons.today, color: 'amber' },
   ];
 
   return (
@@ -153,9 +153,9 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between items-end mb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">Monthly Collection</h2>
+                  <h2 className="text-lg font-bold text-slate-800">{t('dashboardStats.monthlyCollection')}</h2>
                   <p className="text-sm text-slate-500 font-medium mt-1">
-                    {stats?.customersPaidThisMonth ?? 0} of {stats?.activeCustomers ?? 0} customers paid
+                    {t('dashboardStats.customersPaidDesc', { paid: stats?.customersPaidThisMonth ?? 0, total: stats?.activeCustomers ?? 0 })}
                   </p>
                 </div>
                 <div className="text-3xl font-black text-blue-600">
@@ -172,20 +172,20 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Interest Collected</p>
+                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">{t('dashboardStats.interestCollectedLabel')}</p>
                 <p className="text-xl font-black text-emerald-700">{formatCurrency(stats?.revenueThisMonth ?? 0)}</p>
               </div>
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1">Principal Collected</p>
+                <p className="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-1">{t('dashboardStats.principalCollected')}</p>
                 <p className="text-xl font-black text-blue-700">{formatCurrency(stats?.principalCollectedThisMonth ?? 0)}</p>
               </div>
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 col-span-2 flex justify-between items-center">
                 <div>
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Collection This Month</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">{t('dashboardStats.totalCollectionThisMonth')}</p>
                   <p className="text-2xl font-black text-slate-800">{formatCurrency(stats?.totalCollectedThisMonth ?? 0)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Monthly Revenue</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">{t('dashboardStats.monthlyRevenue')}</p>
                   <p className="text-lg font-black text-emerald-600">{formatCurrency(stats?.revenueThisMonth ?? 0)}</p>
                 </div>
               </div>
@@ -194,21 +194,21 @@ export default function Dashboard() {
 
           {/* Analytics Trend Cards */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-5">Analytics</h2>
+            <h2 className="text-lg font-bold text-slate-800 mb-5">{t('dashboardStats.analytics')}</h2>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="border border-slate-100 bg-slate-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Revenue This Month</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">{t('dashboardStats.revenueThisMonth')}</p>
                   <p className="text-xl font-black text-slate-800">{formatCurrency(stats?.revenueThisMonth ?? 0)}</p>
                 </div>
                 <div className="border border-slate-100 bg-slate-50 rounded-xl p-4">
-                  <p className="text-xs font-semibold text-slate-500 mb-1">Revenue Last Month</p>
+                  <p className="text-xs font-semibold text-slate-500 mb-1">{t('dashboardStats.revenueLastMonth')}</p>
                   <p className="text-xl font-black text-slate-800">{formatCurrency(stats?.revenueLastMonth ?? 0)}</p>
                 </div>
               </div>
               
               <div className="border border-slate-100 bg-slate-50 rounded-xl p-4 flex justify-between items-center">
-                <p className="text-sm font-semibold text-slate-600">Revenue Growth</p>
+                <p className="text-sm font-semibold text-slate-600">{t('dashboardStats.revenueGrowth')}</p>
                 <div className={`px-3 py-1 rounded-full text-sm font-bold ${(stats?.revenueDifferencePercent ?? 0) >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                   {(stats?.revenueDifferencePercent ?? 0) > 0 ? '+' : ''}{stats?.revenueDifferencePercent ?? 0}%
                 </div>
@@ -216,11 +216,11 @@ export default function Dashboard() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="border border-slate-100 bg-slate-50 rounded-xl p-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-600">New Customers</p>
+                  <p className="text-sm font-semibold text-slate-600">{t('dashboardStats.newCustomers')}</p>
                   <p className="text-xl font-black text-blue-600">+{stats?.newCustomersThisMonth ?? 0}</p>
                 </div>
                 <div className="border border-slate-100 bg-slate-50 rounded-xl p-4 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-slate-600">Payments Recorded</p>
+                  <p className="text-sm font-semibold text-slate-600">{t('dashboardStats.paymentsRecorded')}</p>
                   <p className="text-xl font-black text-blue-600">+{stats?.paymentsRecordedThisMonth ?? 0}</p>
                 </div>
               </div>
@@ -230,7 +230,7 @@ export default function Dashboard() {
 
         {/* Widgets row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card title="Overdue Customers" subtitle={`${pending.length} ${t('common.customers')}`}>
+          <Card title={t('dashboardStats.overdueCustomers')} subtitle={`${pending.length} ${t('common.customers')}`}>
             <PendingList items={pending} loading={loading} />
           </Card>
 

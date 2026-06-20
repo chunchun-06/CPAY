@@ -62,6 +62,8 @@ const getPaymentStatusForLoan = (loan, payments) => {
     // Get oldest pending
     const oldest = pendingPayments[pendingPayments.length - 1];
     daysOverdue = oldest.daysOverdue || 0;
+  } else if (schedule.find(p => p.status === PAYMENT_STATUS.DUE_TODAY)) {
+    status = PAYMENT_STATUS.DUE_TODAY;
   } else if (schedule.length > 0 && schedule[0].status === PAYMENT_STATUS.PAID) {
     // If the most recent schedule item is paid
     const now = new Date();

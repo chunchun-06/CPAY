@@ -20,35 +20,42 @@ const getStats = asyncHandler(async (req, res) => {
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
+  // Get all active customer IDs
+  const activeCustomersList = await Customer.find({ isDeleted: false }).select('_id').lean();
+  const activeCustomerIds = activeCustomersList.map(c => c._id);
+
   const [
     totalCustomers,
     allActiveLoans,
-    allLoans,
+    totalRevenuePayments,
     thisMonthPayments,
     lastMonthPayments,
     newCustomersThisMonth,
   ] = await Promise.all([
     Customer.countDocuments({ isDeleted: false }),
-    Loan.find({ status: LOAN_STATUS.ACTIVE }).select('remainingPrincipal monthlyDueDay customerId interestRate loanAmount').lean(),
-    Loan.find().select('totalInterestPaid').lean(),
-    Payment.find({ date: { $gte: startOfThisMonth, $lte: endOfThisMonth }, isDeleted: false }).lean(),
-    Payment.find({ date: { $gte: startOfLastMonth, $lte: endOfLastMonth }, isDeleted: false }).lean(),
+    Loan.find({ customerId: { $in: activeCustomerIds }, status: LOAN_STATUS.ACTIVE }).lean(),
+    Payment.find({ customerId: { $in: activeCustomerIds }, isDeleted: false }).select('interestPaid').lean(),
+    Payment.find({ customerId: { $in: activeCustomerIds }, date: { $gte: startOfThisMonth, $lte: endOfThisMonth }, isDeleted: false }).lean(),
+    Payment.find({ customerId: { $in: activeCustomerIds }, date: { $gte: startOfLastMonth, $lte: endOfLastMonth }, isDeleted: false }).lean(),
     Customer.countDocuments({ createdAt: { $gte: startOfThisMonth, $lte: endOfThisMonth }, isDeleted: false }),
   ]);
 
   // Outstanding principal
-  const outstandingPrincipal = allActiveLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+  const outstandingPrincipal = allActiveLoans.reduce((sum, l) => sum + (l.remainingPrincipal || 0), 0);
 
-  // Total Revenue Earned (Total Interest across all loans)
-  const totalRevenueEarned = allLoans.reduce((sum, l) => sum + (l.totalInterestPaid || 0), 0);
+  // Total Revenue Earned (Total Interest across all payments)
+  const totalRevenueEarned = totalRevenuePayments.reduce((sum, p) => sum + (p.interestPaid || 0), 0);
 
-  // Total Collected This Month (Interest + Principal)
-  const totalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.totalAmount, 0);
-  const revenueThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.interestPaid, 0);
-  const principalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.principalPaid, 0);
+  // Total Collected This Month (Interest + Principal by Payment Date)
+  const totalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + (p.interestPaid || 0) + (p.principalPaid || 0), 0);
+  
+  // Revenue This Month (Interest Collected by Payment Date)
+  const revenueThisMonth = thisMonthPayments.reduce((sum, p) => sum + (p.interestPaid || 0), 0);
+  
+  const principalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + (p.principalPaid || 0), 0);
   
   // Revenue Last Month
-  const revenueLastMonth = lastMonthPayments.reduce((sum, p) => sum + p.interestPaid, 0);
+  const revenueLastMonth = lastMonthPayments.reduce((sum, p) => sum + (p.interestPaid || 0), 0);
 
   // Difference %
   let revenueDifferencePercent = 0;
@@ -57,6 +64,12 @@ const getStats = asyncHandler(async (req, res) => {
   } else if (revenueThisMonth > 0) {
     revenueDifferencePercent = 100;
   }
+
+  // Collection Rate
+  const uniqueCustomersPaidThisMonth = new Set(thisMonthPayments.map(p => p.customerId.toString())).size;
+  const customersPaidThisMonth = uniqueCustomersPaidThisMonth;
+  const activeCustomers = allActiveLoans.length;
+  const customersPendingThisMonth = activeCustomers > customersPaidThisMonth ? activeCustomers - customersPaidThisMonth : 0;
 
   // Pre-fetch all payments for active loans
   const loanIds = allActiveLoans.map((l) => l._id);
@@ -70,8 +83,6 @@ const getStats = asyncHandler(async (req, res) => {
   });
 
   let pendingInterest = 0;
-  let customersPaidThisMonth = 0;
-  let customersPendingThisMonth = 0;
   let overdueCustomers = 0;
   let todaysDueCustomers = 0;
 
@@ -94,20 +105,6 @@ const getStats = asyncHandler(async (req, res) => {
 
     if (pendingItems.some(pi => new Date(pi.date).toISOString().split('T')[0] === todayStr)) {
       todaysDueCustomers++;
-    }
-
-    // Find the schedule item for the current month
-    const thisMonthItem = schedule.find(p => {
-      const d = new Date(p.date);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
-
-    if (thisMonthItem) {
-      if (thisMonthItem.status === PAYMENT_STATUS.PAID || !thisMonthItem.isVirtual) {
-        customersPaidThisMonth++;
-      } else {
-        customersPendingThisMonth++;
-      }
     }
   });
 
@@ -140,7 +137,10 @@ const getStats = asyncHandler(async (req, res) => {
  * @access Protected
  */
 const getOverdueCustomers = asyncHandler(async (req, res) => {
-  const activeLoans = await Loan.find({ status: LOAN_STATUS.ACTIVE })
+  const activeCustomersList = await Customer.find({ isDeleted: false }).select('_id').lean();
+  const activeCustomerIds = activeCustomersList.map(c => c._id);
+
+  const activeLoans = await Loan.find({ customerId: { $in: activeCustomerIds }, status: LOAN_STATUS.ACTIVE })
     .populate('customerId', 'fullName mobileNumber secureToken isDeleted address')
     .lean();
 
@@ -201,7 +201,10 @@ const getOverdueCustomers = asyncHandler(async (req, res) => {
  * @access Protected
  */
 const getRecentPayments = asyncHandler(async (req, res) => {
-  const payments = await Payment.find({ isDeleted: false })
+  const activeCustomersList = await Customer.find({ isDeleted: false }).select('_id').lean();
+  const activeCustomerIds = activeCustomersList.map(c => c._id);
+
+  const payments = await Payment.find({ customerId: { $in: activeCustomerIds }, isDeleted: false })
     .sort({ createdAt: -1 })
     .limit(10)
     .populate({

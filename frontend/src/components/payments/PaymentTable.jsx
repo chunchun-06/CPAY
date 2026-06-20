@@ -63,12 +63,15 @@ export default function PaymentTable({ payments = [], loading = false, onPayPend
       label: t('fields.status'),
       render: (v, item) => {
         if (!item.isVirtual) {
-          return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-700">{t('status.paid')}</span>;
+          return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-emerald-100 text-emerald-700">{t('status.paid', 'Paid')}</span>;
         }
-        if (item.status === 'pending') {
-          return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700">{t('status.overdue')}</span>;
+        if (item.status === 'due_today') {
+          return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-700">{t('status.dueToday', 'Due Today')}</span>;
         }
-        return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-700">{t('status.pending')}</span>;
+        if (item.status === 'upcoming') {
+          return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">{t('status.upcoming', 'Upcoming')}</span>;
+        }
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700">{t('status.pending', 'Pending')}</span>;
       },
     },
   ];

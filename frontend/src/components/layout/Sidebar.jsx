@@ -67,7 +67,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
           <div>
             <h1 className="text-xl font-black text-slate-800 tracking-tight">CPAY</h1>
-            <p className="text-xs text-slate-500">Loan Manager</p>
+            <p className="text-xs text-slate-500">{t('common.loanManagementSystem')}</p>
           </div>
         </div>
       </div>

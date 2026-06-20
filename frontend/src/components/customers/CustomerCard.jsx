@@ -57,13 +57,11 @@ export default function CustomerCard({ customer, onDelete, onEdit }) {
           {(() => {
             const s = customer.paymentStatus?.status || 'closed';
             const days = customer.paymentStatus?.daysOverdue || 0;
-            if (s === 'paid') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">🟢 {t('status.interestPaid', 'Interest Paid')}</span>;
-            if (s === 'upcoming') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-100">🟡 {t('status.dueSoon', 'Due Soon')}</span>;
-            if (s === 'pending') {
-              if (days > 7) return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-800 text-white border border-slate-900">⚫ {t('status.overdue', 'Overdue')}</span>;
-              return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100">🔴 {t('status.interestPending', 'Interest Pending')}</span>;
-            }
-            return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">Closed</span>;
+            if (s === 'paid') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> {t('status.paid')}</span>;
+            if (s === 'due_today') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-orange-50 text-orange-700 border border-orange-100"><span className="w-2 h-2 rounded-full bg-orange-500"></span> {t('status.dueToday')}</span>;
+            if (s === 'upcoming') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-blue-700 border border-blue-100"><span className="w-2 h-2 rounded-full bg-blue-500"></span> {t('status.upcoming')}</span>;
+            if (s === 'pending') return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-50 text-rose-700 border border-rose-100"><span className="w-2 h-2 rounded-full bg-rose-500"></span> {t('status.pending')}</span>;
+            return <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">{t('status.closed')}</span>;
           })()}
         </div>
 
