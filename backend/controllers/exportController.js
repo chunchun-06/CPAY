@@ -35,7 +35,7 @@ const exportCustomerPDF = asyncHandler(async (req, res) => {
   // Add virtual
   loan.monthlyInterest = parseFloat(((loan.remainingPrincipal * loan.interestRate) / 100).toFixed(2));
 
-  const payments = await Payment.find({ loanId: loan._id }).sort({ date: -1 }).lean();
+  const payments = await Payment.find({ loanId: loan._id, isDeleted: false }).sort({ date: -1 }).lean();
 
   const pdfBuffer = await generateCustomerLedgerPDF(customer, loan, payments);
 
@@ -69,7 +69,7 @@ const exportCustomerCSV = asyncHandler(async (req, res) => {
     return sendError(res, 'No loan found for this customer.', 404);
   }
 
-  const payments = await Payment.find({ loanId: loan._id }).sort({ date: -1 }).lean();
+  const payments = await Payment.find({ loanId: loan._id, isDeleted: false }).sort({ date: -1 }).lean();
 
   // Write CSV to temp file
   const tmpFile = path.join(os.tmpdir(), `cpay_${id}_${Date.now()}.csv`);

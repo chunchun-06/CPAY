@@ -29,6 +29,26 @@ const createPaymentSchema = Joi.object({
   remarks: Joi.string().max(500).optional().allow(''),
 });
 
+const updatePaymentSchema = Joi.object({
+  date: Joi.date().iso().required().messages({
+    'date.format': 'Payment date must be a valid ISO date',
+    'any.required': 'Payment date is required',
+  }),
+  totalAmount: Joi.number().positive().required().messages({
+    'number.positive': 'Total amount must be positive',
+    'any.required': 'Total amount is required',
+  }),
+  interestPaid: Joi.number().min(0).required().messages({
+    'number.min': 'Interest paid cannot be negative',
+    'any.required': 'Interest paid is required',
+  }),
+  principalPaid: Joi.number().min(0).required().messages({
+    'number.min': 'Principal paid cannot be negative',
+    'any.required': 'Principal paid is required',
+  }),
+  remarks: Joi.string().max(500).optional().allow(''),
+});
+
 const validate = (schema) => (req, res, next) => {
   const { error } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) {
@@ -43,4 +63,5 @@ const validate = (schema) => (req, res, next) => {
 
 module.exports = {
   validateCreatePayment: validate(createPaymentSchema),
+  validateUpdatePayment: validate(updatePaymentSchema),
 };

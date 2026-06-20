@@ -104,7 +104,7 @@ const getAllCustomers = asyncHandler(async (req, res) => {
 
   // For each customer, get payment status
   const loanIds = loans.map((l) => l._id);
-  const payments = await Payment.find({ loanId: { $in: loanIds } }).lean();
+  const payments = await Payment.find({ loanId: { $in: loanIds }, isDeleted: false }).lean();
   const paymentsByLoan = {};
   payments.forEach((p) => {
     const key = p.loanId.toString();
@@ -163,7 +163,7 @@ const getCustomerById = asyncHandler(async (req, res) => {
   if (loan) {
     loan.monthlyInterest = parseFloat(((loan.remainingPrincipal * loan.interestRate) / 100).toFixed(2));
     if (loan.status === LOAN_STATUS.ACTIVE) {
-      const payments = await Payment.find({ loanId: loan._id }).lean();
+      const payments = await Payment.find({ loanId: loan._id, isDeleted: false }).lean();
       paymentStatus = getPaymentStatusForLoan(loan, payments);
     }
   }

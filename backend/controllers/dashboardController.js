@@ -14,35 +14,53 @@ const { generatePaymentSchedule } = require('../helpers/paymentScheduleHelper');
  */
 const getStats = asyncHandler(async (req, res) => {
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
   const [
     totalCustomers,
     allActiveLoans,
-    monthlyPayments,
+    allLoans,
+    thisMonthPayments,
+    lastMonthPayments,
+    newCustomersThisMonth,
   ] = await Promise.all([
     Customer.countDocuments({ isDeleted: false }),
     Loan.find({ status: LOAN_STATUS.ACTIVE }).select('remainingPrincipal monthlyDueDay customerId interestRate loanAmount').lean(),
-    Payment.find({ date: { $gte: startOfMonth, $lte: endOfMonth } })
-      .select('loanId interestPaid')
-      .lean(),
+    Loan.find().select('totalInterestPaid').lean(),
+    Payment.find({ date: { $gte: startOfThisMonth, $lte: endOfThisMonth }, isDeleted: false }).lean(),
+    Payment.find({ date: { $gte: startOfLastMonth, $lte: endOfLastMonth }, isDeleted: false }).lean(),
+    Customer.countDocuments({ createdAt: { $gte: startOfThisMonth, $lte: endOfThisMonth }, isDeleted: false }),
   ]);
 
   // Outstanding principal
-  const outstandingPrincipal = allActiveLoans.reduce(
-    (sum, l) => sum + l.remainingPrincipal,
-    0
-  );
+  const outstandingPrincipal = allActiveLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 
-  // Interest collected this month
-  const interestCollectedThisMonth = monthlyPayments.reduce(
-    (sum, p) => sum + p.interestPaid,
-    0
-  );
+  // Total Revenue Earned (Total Interest across all loans)
+  const totalRevenueEarned = allLoans.reduce((sum, l) => sum + (l.totalInterestPaid || 0), 0);
 
+  // Total Collected This Month (Interest + Principal)
+  const totalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.totalAmount, 0);
+  const revenueThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.interestPaid, 0);
+  const principalCollectedThisMonth = thisMonthPayments.reduce((sum, p) => sum + p.principalPaid, 0);
+  
+  // Revenue Last Month
+  const revenueLastMonth = lastMonthPayments.reduce((sum, p) => sum + p.interestPaid, 0);
+
+  // Difference %
+  let revenueDifferencePercent = 0;
+  if (revenueLastMonth > 0) {
+    revenueDifferencePercent = ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100;
+  } else if (revenueThisMonth > 0) {
+    revenueDifferencePercent = 100;
+  }
+
+  // Pre-fetch all payments for active loans
   const loanIds = allActiveLoans.map((l) => l._id);
-  const payments = await Payment.find({ loanId: { $in: loanIds } }).select('loanId date').lean();
+  const payments = await Payment.find({ loanId: { $in: loanIds }, isDeleted: false }).lean();
 
   const paymentsByLoan = {};
   payments.forEach((p) => {
@@ -54,11 +72,30 @@ const getStats = asyncHandler(async (req, res) => {
   let pendingInterest = 0;
   let customersPaidThisMonth = 0;
   let customersPendingThisMonth = 0;
+  let overdueCustomers = 0;
+  let todaysDueCustomers = 0;
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   allActiveLoans.forEach((loan) => {
     const loanPayments = paymentsByLoan[loan._id.toString()] || [];
     const schedule = generatePaymentSchedule(loan, loanPayments);
     
+    // Find virtual pending items
+    const pendingItems = schedule.filter(p => p.isVirtual && p.status !== PAYMENT_STATUS.PAID);
+    
+    pendingItems.forEach(pi => {
+      pendingInterest += pi.interestPaid; // expected interest
+    });
+
+    if (pendingItems.some(pi => pi.daysOverdue > 0)) {
+      overdueCustomers++;
+    }
+
+    if (pendingItems.some(pi => new Date(pi.date).toISOString().split('T')[0] === todayStr)) {
+      todaysDueCustomers++;
+    }
+
     // Find the schedule item for the current month
     const thisMonthItem = schedule.find(p => {
       const d = new Date(p.date);
@@ -70,7 +107,6 @@ const getStats = asyncHandler(async (req, res) => {
         customersPaidThisMonth++;
       } else {
         customersPendingThisMonth++;
-        pendingInterest += thisMonthItem.interestPaid; // expected interest
       }
     }
   });
@@ -80,32 +116,36 @@ const getStats = asyncHandler(async (req, res) => {
     {
       totalCustomers,
       outstandingPrincipal: parseFloat(outstandingPrincipal.toFixed(2)),
+      totalRevenueEarned: parseFloat(totalRevenueEarned.toFixed(2)),
+      totalCollectedThisMonth: parseFloat(totalCollectedThisMonth.toFixed(2)),
+      revenueThisMonth: parseFloat(revenueThisMonth.toFixed(2)),
+      principalCollectedThisMonth: parseFloat(principalCollectedThisMonth.toFixed(2)),
+      revenueLastMonth: parseFloat(revenueLastMonth.toFixed(2)),
+      revenueDifferencePercent: parseFloat(revenueDifferencePercent.toFixed(1)),
+      newCustomersThisMonth,
+      paymentsRecordedThisMonth: thisMonthPayments.length,
       pendingInterest: parseFloat(pendingInterest.toFixed(2)),
-      interestCollectedThisMonth: parseFloat(interestCollectedThisMonth.toFixed(2)),
       customersPaidThisMonth,
-      activeCustomers: allActiveLoans.length,
       customersPendingThisMonth,
+      overdueCustomers,
+      todaysDueCustomers,
+      activeCustomers: allActiveLoans.length,
     },
     'Dashboard stats retrieved.'
   );
 });
 
 /**
- * @route  GET /api/dashboard/monthly-pending
+ * @route  GET /api/dashboard/overdue
  * @access Protected
- * @desc   Customers where this month's payment is pending/overdue
  */
-const getMonthlyPendingCustomers = asyncHandler(async (req, res) => {
-  const now = new Date();
-
+const getOverdueCustomers = asyncHandler(async (req, res) => {
   const activeLoans = await Loan.find({ status: LOAN_STATUS.ACTIVE })
     .populate('customerId', 'fullName mobileNumber secureToken isDeleted address')
     .lean();
 
   const loanIds = activeLoans.map((l) => l._id);
-  const payments = await Payment.find({ loanId: { $in: loanIds } })
-    .select('loanId date')
-    .lean();
+  const payments = await Payment.find({ loanId: { $in: loanIds }, isDeleted: false }).lean();
 
   const paymentsByLoan = {};
   payments.forEach((p) => {
@@ -114,7 +154,7 @@ const getMonthlyPendingCustomers = asyncHandler(async (req, res) => {
     paymentsByLoan[key].push(p);
   });
 
-  const pendingList = [];
+  const overdueList = [];
 
   activeLoans.forEach((loan) => {
     if (!loan.customerId || loan.customerId.isDeleted) return;
@@ -122,14 +162,18 @@ const getMonthlyPendingCustomers = asyncHandler(async (req, res) => {
     const loanPayments = paymentsByLoan[loan._id.toString()] || [];
     const schedule = generatePaymentSchedule(loan, loanPayments);
     
-    const thisMonthItem = schedule.find(p => {
-      const d = new Date(p.date);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
+    // A customer might have multiple overdue months. We aggregate them.
+    const overdueItems = schedule.filter(p => p.isVirtual && p.daysOverdue > 0 && p.status !== PAYMENT_STATUS.PAID);
 
-    if (thisMonthItem && thisMonthItem.status !== PAYMENT_STATUS.PAID && thisMonthItem.isVirtual) {
-      pendingList.push({
-        id: thisMonthItem._id || thisMonthItem.id,
+    if (overdueItems.length > 0) {
+      // Find the oldest overdue date
+      const oldestOverdue = overdueItems.reduce((oldest, item) => (new Date(item.date) < new Date(oldest.date) ? item : oldest), overdueItems[0]);
+      
+      // Sum all pending interest
+      const totalPendingInterest = overdueItems.reduce((sum, item) => sum + item.interestPaid, 0);
+
+      overdueList.push({
+        id: loan._id, // use loan id as unique key
         customer: {
           token: loan.customerId.secureToken,
           fullName: loan.customerId.fullName,
@@ -137,27 +181,19 @@ const getMonthlyPendingCustomers = asyncHandler(async (req, res) => {
           address: loan.customerId.address,
         },
         loan: {
-          id: loan._id,
-          remainingPrincipal: thisMonthItem.remainingPrincipal,
-          monthlyInterest: thisMonthItem.interestPaid,
-          monthlyDueDay: loan.monthlyDueDay,
-          daysOverdue: thisMonthItem.daysOverdue,
-          dueDate: thisMonthItem.date,
-          status: thisMonthItem.status
+          remainingPrincipal: loan.remainingPrincipal,
+          pendingInterest: totalPendingInterest,
+          dueDate: oldestOverdue.date,
+          daysOverdue: oldestOverdue.daysOverdue,
         },
       });
     }
   });
 
-  // Sort: Overdue first (by daysOverdue desc), then due soonest
-  pendingList.sort((a, b) => {
-    if (a.loan.daysOverdue > 0 || b.loan.daysOverdue > 0) {
-      return b.loan.daysOverdue - a.loan.daysOverdue;
-    }
-    return new Date(a.loan.dueDate) - new Date(b.loan.dueDate);
-  });
+  // Sort: Highest days overdue first
+  overdueList.sort((a, b) => b.loan.daysOverdue - a.loan.daysOverdue);
 
-  return sendSuccess(res, pendingList, `${pendingList.length} pending customer(s) this month.`);
+  return sendSuccess(res, overdueList, `${overdueList.length} overdue customers.`);
 });
 
 /**
@@ -165,7 +201,7 @@ const getMonthlyPendingCustomers = asyncHandler(async (req, res) => {
  * @access Protected
  */
 const getRecentPayments = asyncHandler(async (req, res) => {
-  const payments = await Payment.find()
+  const payments = await Payment.find({ isDeleted: false })
     .sort({ createdAt: -1 })
     .limit(10)
     .populate({
@@ -197,6 +233,6 @@ const getRecentPayments = asyncHandler(async (req, res) => {
 
 module.exports = {
   getStats,
-  getMonthlyPendingCustomers,
+  getOverdueCustomers,
   getRecentPayments,
 };

@@ -51,6 +51,12 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       default: 'admin',
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    deletedBy: String,
   },
   {
     timestamps: true,

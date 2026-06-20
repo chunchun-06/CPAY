@@ -12,7 +12,7 @@ import Card from '../components/ui/Card';
 import Spinner from '../components/ui/Spinner';
 import { getCustomerById } from '../api/customerApi';
 import { getLoanByCustomer } from '../api/loanApi';
-import { getPaymentHistory, recordPayment } from '../api/paymentApi';
+import { getPaymentHistory, createPayment, updatePayment, deletePayment } from '../api/paymentApi';
 import { closeLoan } from '../api/loanApi';
 import { deleteCustomer, regenerateToken } from '../api/customerApi';
 import useToast from '../hooks/useToast';
@@ -84,7 +84,7 @@ export default function CustomerProfile() {
   const handlePayment = async (paymentData) => {
     setActionLoading(true);
     try {
-      await recordPayment(paymentData);
+      await createPayment(paymentData);
       toast.success(t('payment.recordedSuccess'));
       setPaymentModal(false);
       setPaymentInitialData(null);
@@ -96,6 +96,40 @@ export default function CustomerProfile() {
       } else {
         toast.error(err.response?.data?.message || t('payment.recordFailed'));
       }
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const [editPaymentModal, setEditPaymentModal] = useState(false);
+  const [deletePaymentDialog, setDeletePaymentDialog] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+
+  const handleEditPayment = async (paymentData) => {
+    setActionLoading(true);
+    try {
+      await updatePayment(selectedPayment._id || selectedPayment.id, paymentData);
+      toast.success('Payment updated successfully');
+      setEditPaymentModal(false);
+      setSelectedPayment(null);
+      await Promise.all([load(), loadPayments()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeletePayment = async () => {
+    setActionLoading(true);
+    try {
+      await deletePayment(selectedPayment._id || selectedPayment.id);
+      toast.success('Payment deleted successfully');
+      setDeletePaymentDialog(false);
+      setSelectedPayment(null);
+      await Promise.all([load(), loadPayments()]);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
     } finally {
       setActionLoading(false);
     }
@@ -234,6 +268,14 @@ export default function CustomerProfile() {
   const isLoanActive = loan?.status === 'active';
   const initials = getInitials(customer?.fullName || '');
 
+  // Computed Financials
+  const actualPayments = payments.filter(p => !p.isVirtual);
+  const pendingItems = payments.filter(p => p.isVirtual && p.status !== 'paid');
+  const totalInterestPending = pendingItems.reduce((acc, p) => acc + p.interestPaid, 0);
+  const lastPaymentDate = actualPayments.length > 0 ? actualPayments[0].date : null;
+  const isOverdue = pendingItems.some(p => p.daysOverdue > 0);
+  const currentStatus = isOverdue ? 'Overdue' : pendingItems.length > 0 ? 'Pending' : 'Paid';
+
   return (
     <Layout pageTitle={customer?.fullName || t('customer.customerProfile')}>
       <div className="max-w-5xl mx-auto space-y-6">
@@ -292,21 +334,48 @@ export default function CustomerProfile() {
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('fields.remainingPrincipal')}</p>
-            <p className="text-3xl font-black text-slate-800">{formatCurrency(loan?.remainingPrincipal ?? 0)}</p>
+        {/* Financial Summary */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Financial Summary</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-1">Total Interest Paid</p>
+              <p className="text-xl font-black text-emerald-700">{formatCurrency(loan?.totalInterestPaid || 0)}</p>
+            </div>
+            <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-rose-700 uppercase tracking-wider mb-1">Total Interest Pending</p>
+              <p className="text-xl font-black text-rose-700">{formatCurrency(totalInterestPending)}</p>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-1">Total Principal Paid</p>
+              <p className="text-xl font-black text-blue-700">{formatCurrency(loan?.totalPrincipalPaid || 0)}</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">Remaining Principal</p>
+              <p className="text-xl font-black text-amber-700">{formatCurrency(loan?.remainingPrincipal || 0)}</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Monthly Interest</p>
+              <p className="text-xl font-black text-slate-800">{formatCurrency(loan?.monthlyInterest || 0)}</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Collected</p>
+              <p className="text-xl font-black text-slate-800">{formatCurrency((loan?.totalInterestPaid || 0) + (loan?.totalPrincipalPaid || 0))}</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Last Payment Date</p>
+              <p className="text-base font-bold text-slate-800">{lastPaymentDate ? formatDate(lastPaymentDate) : '—'}</p>
+            </div>
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Next Due Date</p>
+              <p className="text-base font-bold text-slate-800">{t('customer.ofEachMonth', { ordinal: getOrdinal(loan?.monthlyDueDay || 1), day: loan?.monthlyDueDay || 1 })}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center shadow-sm">
-            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-2">{t('fields.monthlyInterest')}</p>
-            <p className="text-3xl font-black text-emerald-600">{formatCurrency(loan?.monthlyInterest ?? 0)}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{t('fields.nextDueDate')}</p>
-            <p className="text-2xl font-black text-amber-600">
-              {t('customer.ofEachMonth', { ordinal: getOrdinal(loan?.monthlyDueDay || 1), day: loan?.monthlyDueDay || 1 })}
-            </p>
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-500 uppercase tracking-wider">Current Status:</span>
+            {currentStatus === 'Paid' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-emerald-100 text-emerald-700"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Paid</span>}
+            {currentStatus === 'Pending' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-amber-100 text-amber-700"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Pending</span>}
+            {currentStatus === 'Overdue' && <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold bg-rose-100 text-rose-700"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Overdue</span>}
           </div>
         </div>
 
@@ -391,14 +460,44 @@ export default function CustomerProfile() {
           }
           noPad
         >
-          <PaymentTable payments={payments} loading={paymentsLoading} onPayPending={(item) => { setPaymentInitialData(item); setPaymentModal(true); }} />
+          <PaymentTable 
+            payments={payments} 
+            loading={paymentsLoading} 
+            onPayPending={(item) => { setPaymentInitialData(item); setPaymentModal(true); }}
+            onEditPayment={(item) => { setSelectedPayment(item); setEditPaymentModal(true); }}
+            onDeletePayment={(item) => { setSelectedPayment(item); setDeletePaymentDialog(true); }}
+          />
         </Card>
       </div>
 
-      {/* Payment Modal */}
+      {/* Payment Modal (Create) */}
       <Modal isOpen={paymentModal} onClose={() => { setPaymentModal(false); setPaymentInitialData(null); }} title={t('payment.recordPayment')} size="md">
         <PaymentForm loan={loan} initialData={paymentInitialData} onSubmit={handlePayment} loading={actionLoading} />
       </Modal>
+
+      {/* Edit Payment Modal */}
+      <Modal isOpen={editPaymentModal} onClose={() => { setEditPaymentModal(false); setSelectedPayment(null); }} title="Edit Payment" size="md">
+        {selectedPayment && (
+          <PaymentForm 
+            loan={loan} 
+            initialData={{ ...selectedPayment, isEditMode: true }} 
+            onSubmit={handleEditPayment} 
+            loading={actionLoading} 
+          />
+        )}
+      </Modal>
+
+      {/* Delete Payment Dialog */}
+      <ConfirmDialog
+        isOpen={deletePaymentDialog}
+        onClose={() => setDeletePaymentDialog(false)}
+        onConfirm={handleDeletePayment}
+        title="Delete Payment"
+        message="Are you sure you want to delete this payment? All dependent loan balances will be recalculated."
+        confirmText="Delete Payment"
+        danger
+        loading={actionLoading}
+      />
 
       {/* Close Loan Dialog */}
       <ConfirmDialog

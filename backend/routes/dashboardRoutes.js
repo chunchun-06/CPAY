@@ -5,7 +5,7 @@ const router = express.Router();
 
 const {
   getStats,
-  getMonthlyPendingCustomers,
+  getOverdueCustomers,
   getRecentPayments,
 } = require('../controllers/dashboardController');
 const { protectAdmin } = require('../middleware/authMiddleware');
@@ -13,7 +13,7 @@ const { protectAdmin } = require('../middleware/authMiddleware');
 router.use(protectAdmin);
 
 router.get('/stats', getStats);
-router.get('/monthly-pending', getMonthlyPendingCustomers);
+router.get('/overdue', getOverdueCustomers);
 router.get('/recent-payments', getRecentPayments);
 
 module.exports = router;

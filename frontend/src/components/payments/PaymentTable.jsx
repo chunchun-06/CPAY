@@ -5,7 +5,7 @@ import { formatCurrency, formatDate } from '../../utils/formatters';
 
 import Button from '../ui/Button';
 
-export default function PaymentTable({ payments = [], loading = false, onPayPending, readOnly = false }) {
+export default function PaymentTable({ payments = [], loading = false, onPayPending, onEditPayment, onDeletePayment, readOnly = false }) {
   const { t } = useTranslation();
 
   const columns = useMemo(() => {
@@ -83,6 +83,18 @@ export default function PaymentTable({ payments = [], loading = false, onPayPend
             <Button variant="primary" size="xs" onClick={() => onPayPending(item)}>
               {t('payment.markPaid')}
             </Button>
+          );
+        }
+        if (!item.isVirtual && onEditPayment && onDeletePayment) {
+          return (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="xs" onClick={() => onEditPayment(item)}>
+                {t('common.edit')}
+              </Button>
+              <Button variant="ghost" size="xs" onClick={() => onDeletePayment(item)} className="text-rose-600 hover:bg-rose-50">
+                {t('common.delete')}
+              </Button>
+            </div>
           );
         }
         return null;

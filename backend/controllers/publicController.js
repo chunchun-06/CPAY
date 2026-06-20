@@ -39,7 +39,7 @@ const getCustomerByToken = asyncHandler(async (req, res) => {
   loan.monthlyInterest = parseFloat(((loan.remainingPrincipal * loan.interestRate) / 100).toFixed(2));
 
   // Get payment history (all payments for public view)
-  const payments = await Payment.find({ loanId: loan._id })
+  const payments = await Payment.find({ loanId: loan._id, isDeleted: false })
     .sort({ date: -1 })
     .lean();
 
